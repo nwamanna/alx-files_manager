@@ -8,13 +8,14 @@ class RedisClient {
 
     this.isConnected = true;
 
+    
     // Handle errors
     this.client.on('error', (error) => {
       console.log(`${error}`);
       this.isConnected = false;
     });
 
-    // make methods asynchrounous
+    // Make methods asynchrounous
     this.getAsync = util.promisify(this.client.get).bind(this.client);
     this.setAsync = util.promisify(this.client.set).bind(this.client);
     this.delAsync = util.promisify(this.client.del).bind(this.client);
