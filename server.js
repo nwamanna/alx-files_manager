@@ -1,15 +1,16 @@
 /* eslint-env node */
-import express from "express"
-import bodyParser from "body-parser"
-import router from "./routes/index"
+import express from 'express';
+import bodyParser from 'body-parser';
 
-const app = express()
+const router = require('./routes/index');
 
-const port = process.env.PORT || 5000
+const app = express();
 
-app.use(bodyParser.json())
-app.use("/", router)
+const port = process.env.PORT || 5000;
+
+app.use(bodyParser.json());
+app.use('/', router);
 
 app.listen(port, () => {
-	console.log(`server is running on port: ${port}`)
-})
+  console.log(`server is running on port: ${port}`);
+});
