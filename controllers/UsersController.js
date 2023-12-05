@@ -29,7 +29,7 @@ class UsersController {
 
       // create a new user object
       const newUser = {
-        email,
+        email: email,
         password: hashedPassword,
       };
 
