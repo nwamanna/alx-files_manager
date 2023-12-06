@@ -208,7 +208,7 @@ const FilesController = {
     return res.json(formattedFiles);
   },
 
-  async putPublish(req, res) {
+  static async putPublish(req, res) {
     const token = req.header('X-Token');
     if (!token) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -253,7 +253,7 @@ const FilesController = {
     return res.status(200).json(formattedFile);
   },
 
-  async putUnPublish(req, res) {
+  static async putUnPublish(req, res) {
     const token = req.header('X-Token');
     if (!token) {
       return res.status(401).json({ error: 'Unauthorized' });
