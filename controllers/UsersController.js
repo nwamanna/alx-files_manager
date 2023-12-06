@@ -29,7 +29,7 @@ class UsersController {
 
       // create a new user object
       const newUser = {
-        email: email,
+        email,
         password: hashedPassword,
       };
 
@@ -53,7 +53,7 @@ class UsersController {
       if (!Xtoken) {
         res.status(401).json({ error: 'Unauthorized' });
       }
-              
+
       const key = `auth_${Xtoken}`;
 
       const id = await redisClient.get(key);
