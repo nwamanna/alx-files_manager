@@ -87,91 +87,110 @@ class FilesController {
     }
   }
 
-  static async getShow(req, res) {
-    try {
-      // extract token
-      const Xtoken = req.headers['x-token'];
-
-      if (!Xtoken) {
-        res.status(401).json({ error: 'Unauthorized' });
-      }
-
-      const key = `auth_${Xtoken}`;
-
-      const userId = await redisClient.get(key);
-      // console.log(id);
-
-      if (!userId) {
-        res.status(401).json({ error: 'Unauthorized' });
-      }
-
-      const { id } = req.params;
-      // console.log(id);
-      const ID = new mongodb.ObjectID(id);
-      const allFile = await dbClient.client.db().collection('files').findOne({ userId, _id: ID });
-      // console.log(allFile);
-
-      if (!allFile) {
-        res.status(404).json({ error: 'Not found' });
-      }
-
-      res.status(200).json(allFile);
-    } catch (error) {
-      res.status(500).send(`error: ${error}`);
+  async getShow(req, res) {
+    const token = req.header('X-Token');
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
+
+    const key = `auth_${token}`;
+    const userIdFromRedis = await redisClient.get(key);
+
+    if (!userIdFromRedis) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const userIdforMongo = new ObjectID(userIdFromRedis);
+
+    const user = await dbClient.client.db().collection('users').findOne({ _id: userIdforMongo });
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const fileId = req.params.id;
+    const fileObjectId = new ObjectID(fileId);
+    const userFile = await dbClient.client.db().collection('files').findOne({ userId: user._id, _id: fileObjectId });
+
+    if (!userFile) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    // return res.json(userFile);
+    const formattedUserFile = {
+      id: userFile._id.toString(),
+      userId: userFile.userId.toString(),
+      name: userFile.name,
+      type: userFile.type,
+      isPublic: userFile.isPublic,
+      parentId: userFile.parentId,
+    };
+
+    return res.json(formattedUserFile);
   }
 
-  static async getIndex(req, res) {
-    try {
-      // extract token
-      const Xtoken = req.headers['x-token'];
-
-      if (!Xtoken) {
-        res.status(401).json({ error: 'Unauthorized' });
-      }
-
-      const key = `auth_${Xtoken}`;
-
-      const userId = await redisClient.get(key);
-      // console.log(id);
-
-      if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-
-      // Extract query paramter
-      const { parentId = '0', page = '0' } = req.query;
-
-      // use page to form pagination
-      const pipeline = [
-        {
-          $match: {
-            userId,
-            parentId,
-          },
-        },
-
-        // sikp page based on pagination
-        {
-          $skip: parseInt(page, 10) * 20,
-        },
-
-        {
-          $limit: 20,
-        },
-      ];
-
-      // use aggregation to retive a list of file arrrays
-      const allFile = await dbClient.client.db().collection('files').aggregate(pipeline).toArray();
-      // console.log(allFile);
-
-      if (!allFile) {
-        return res.status(404).json({ error: 'Not found' });
-      }
-      return res.status(200).json(allFile);
-    } catch (error) {
-      return res.status(500).send(`internal server error ${error}`);
+  async getIndex(req, res) {
+    const token = req.header('X-Token');
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
+
+    const key = `auth_${token}`;
+    const userIdFromRedis = await redisClient.get(key);
+    const userIdforMongo = new ObjectID(userIdFromRedis);
+
+    const user = await dbClient.client.db().collection('users').findOne({ _id: userIdforMongo });
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { parentId } = req.query;
+    const page = parseInt(req.query.page, 10) || 0;
+    const perpage = 20;
+    const skip = page * perpage;
+
+    if (parentId) {
+      const files = await dbClient.client
+        .db()
+        .collection('files')
+        .find({ userId: user._id, parentId })
+        .skip(skip)
+        .limit(perpage)
+        .toArray();
+
+      // return res.json(files);
+      const formattedFiles = files
+        .map(({
+          _id, userId, name, type, isPublic, parentId,
+        }) => ({
+          id: _id.toString(),
+          userId: userId.toString(),
+          name,
+          type,
+          isPublic,
+          parentId,
+        }));
+
+      return res.json(formattedFiles);
+    }
+    const files = await dbClient.client
+      .db()
+      .collection('files')
+      .find({ userId: user._id })
+      .skip(skip)
+      .limit(perpage)
+      .toArray();
+
+    // return res.json(files);
+    const formattedFiles = files
+      .map(({
+        _id, userId, name, type, isPublic, parentId,
+      }) => ({
+        id: _id.toString(),
+        userId: userId.toString(),
+        name,
+        type,
+        isPublic,
+        parentId,
+      }));
+
+    return res.json(formattedFiles);
   }
 
   static async putPublish(req, res) {
