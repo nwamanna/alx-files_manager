@@ -208,96 +208,83 @@ const FilesController = {
     return res.json(formattedFiles);
   },
 
-  static async putPublish(req, res) {
-    const token = req.header('X-Token');
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+  async putPublish(req, res) {
+try {
+// extract token
+const Xtoken = req.headers['x-token'];
 
-    const key = `auth_${token}`;
-    const userIdFromRedis = await redisClient.get(key);
-    const userIdforMongo = new ObjectID(userIdFromRedis);
+if (!Xtoken) {
+return res.status(401).json({ error: 'Unauthorized' });
+}
 
-    const user = await dbClient.client.db().collection('users').findOne({ _id: userIdforMongo });
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+const key = `auth_${Xtoken}`;
 
-    const fileId = req.params.id;
-    const fileObjectId = new ObjectID(fileId);
+const userId = await redisClient.get(key);
+// console.log(id);
 
-    const file = await dbClient.client.db().collection('files').findOne({ userId: user._id, _id: fileObjectId });
-    if (!file) {
-      return res.status(404).json({ error: 'Not found' });
-    }
+if (!userId) {
+return res.status(401).json({ error: 'Unauthorized' });
+}
 
-    const updatedFile = await dbClient.client.db().collection('files')
-      .findOneAndUpdate(
-        { userId: user._id, _id: fileObjectId },
-        { $set: { isPublic: true } },
-        { returnOriginal: false },
-      );
+const { id } = req.params;
+// console.log(id);
+const ID = new mongodb.ObjectID(id);
+const allFile = await dbClient.client.db().collection('files').findOne({ userId, _id: ID });
 
-    if (!updatedFile) {
-      return res.status(404).json({ error: 'Not found' });
-    }
-    const formattedFile = {
-      id: updatedFile.value._id.toString(),
-      userId: updatedFile.value.userId.toString(),
-      name: updatedFile.value.name,
-      type: updatedFile.value.type,
-      isPublic: updatedFile.value.isPublic,
-      parentId: updatedFile.value.parentId,
-    };
+if (!allFile) {
+return res.status(404).json({ error: 'Not found' });
+}
 
-    return res.status(200).json(formattedFile);
-  },
+const updatedFile = await dbClient.client.db().collection('files').findOneAndUpdate(
+{ userId, _id: ID },
+{ $set: { isPublic: true } },
+{ returnDocument: 'after' },
+);
 
-  static async putUnPublish(req, res) {
-    const token = req.header('X-Token');
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+return res.status(200).json(updatedFile.value);
+} catch (error) {
+return res.status(500).send(`internal server error ${error}`);
+}
+}
 
-    const key = `auth_${token}`;
-    const userIdFromRedis = await redisClient.get(key);
-    const userIdforMongo = new ObjectID(userIdFromRedis);
+async putUnpublish(req, res) {
+try {
+// extract token
+const Xtoken = req.headers['x-token'];
 
-    const user = await dbClient.client.db().collection('users').findOne({ _id: userIdforMongo });
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+if (!Xtoken) {
+return res.status(401).json({ error: 'Unauthorized' });
+}
 
-    const fileId = req.params.id;
-    const fileObjectId = new ObjectID(fileId);
+const key = `auth_${Xtoken}`;
 
-    const file = await dbClient.client.db().collection('files').findOne({ userId: user._id, _id: fileObjectId });
-    if (!file) {
-      return res.status(404).json({ error: 'Not found' });
-    }
+const userId = await redisClient.get(key);
+// console.log(id);
 
-    const updatedFile = await dbClient.client.db().collection('files')
-      .findOneAndUpdate(
-        { userId: user._id, _id: fileObjectId },
-        { $set: { isPublic: false } },
-        { returnOriginal: false },
-      );
+if (!userId) {
+return res.status(401).json({ error: 'Unauthorized' });
+}
 
-    if (!updatedFile) {
-      return res.status(404).json({ error: 'Not found' });
-    }
-    const formattedFile = {
-      id: updatedFile.value._id.toString(),
-      userId: updatedFile.value.userId.toString(),
-      name: updatedFile.value.name,
-      type: updatedFile.value.type,
-      isPublic: updatedFile.value.isPublic,
-      parentId: updatedFile.value.parentId,
-    };
+const { id } = req.params;
+// console.log(id);
+const ID = new mongodb.ObjectID(id);
+const allFile = await dbClient.client.db().collection('files').findOne({ userId, _id: ID });
 
-    return res.status(200).json(formattedFile);
-  },
-};
+if (!allFile) {
+return res.status(404).json({ error: 'Not found' });
+}
+
+const updatedFile = await dbClient.client.db().collection('files').findOneAndUpdate(
+{ userId, _id: ID },
+{ $set: { isPublic: false } },
+{ returnDocument: 'after' },
+);
+
+return res.status(200).json(updatedFile.value);
+} catch (error) {
+return res.status(500).send(`internal server error ${error}`);
+}
+}
+}
 
 module.exports = FilesController;
-
