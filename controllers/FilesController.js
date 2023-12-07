@@ -5,6 +5,8 @@ import mongodb from 'mongodb';
 import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
 
+const { ObjectID } = require('mongodb');
+
 class FilesController {
   static async postUpload(req, res) {
     try {
