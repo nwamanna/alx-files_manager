@@ -175,42 +175,48 @@ class FilesController {
   }
 
   static async putPublish(req, res) {
-    try {
-      // extract token
-      const Xtoken = req.headers['x-token'];
+    const token = req.header('X-Token');
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
-      if (!Xtoken) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
+    const key = `auth_${token}`;
+    const userIdFromRedis = await redisClient.get(key);
+    const userIdforMongo = new ObjectID(userIdFromRedis);
 
-      const key = `auth_${Xtoken}`;
+    const user = await dbClient.client.db().collection('users').findOne({ _id: userIdforMongo });
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
-      const userId = await redisClient.get(key);
-      // console.log(id);
+    const fileId = req.params.id;
+    const fileObjectId = new ObjectID(fileId);
 
-      if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
+    const file = await dbClient.client.db().collection('files').findOne({ userId: user._id, _id: fileObjectId });
+    if (!file) {
+      return res.status(404).json({ error: 'Not found' });
+    }
 
-      const { id } = req.params;
-      // console.log(id);
-      const ID = new mongodb.ObjectID(id);
-      const allFile = await dbClient.client.db().collection('files').findOne({ userId, _id: ID });
-
-      if (!allFile) {
-        return res.status(404).json({ error: 'Not found' });
-      }
-
-      const updatedFile = await dbClient.client.db().collection('files').findOneAndUpdate(
-        { userId, _id: ID },
+    const updatedFile = await dbClient.client.db().collection('files')
+      .findOneAndUpdate(
+        { userId: user._id, _id: fileObjectId },
         { $set: { isPublic: true } },
-        { returnDocument: 'after' },
+        { returnOriginal: false },
       );
 
-      return res.status(200).json(updatedFile.value);
-    } catch (error) {
-      return res.status(500).send(`internal server error ${error}`);
+    if (!updatedFile) {
+      return res.status(404).json({ error: 'Not found' });
     }
+    const formattedFile = {
+      id: updatedFile.value._id.toString(),
+      userId: updatedFile.value.userId.toString(),
+      name: updatedFile.value.name,
+      type: updatedFile.value.type,
+      isPublic: updatedFile.value.isPublic,
+      parentId: updatedFile.value.parentId,
+    };
+
+    return res.status(200).json(formattedFile);
   }
 
   static async putUnpublish(req, res) {
